@@ -1,0 +1,3 @@
+[submodule "Assets/FlipWebApps/GameFramework"]
+	path = Assets/FlipWebApps/GameFramework
+	url = git@github.com:FlipWebApps/GameFramework.git

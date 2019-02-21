@@ -8,7 +8,7 @@ using UnityEditor.Build.Reporting;
 
 namespace Internal.Scripts.Editor
 {
-    public class GameFrameworkFree : MonoBehaviour
+    public class GameFramework : MonoBehaviour
     {
         static string[] _testScenePaths =
         {

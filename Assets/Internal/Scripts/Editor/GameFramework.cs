@@ -19,6 +19,17 @@ namespace Internal.Scripts.Editor
         };
 
 
+        [MenuItem("FlipWebApps/Game Framework/Archive Uploaded Asset")]
+        static void ArchiveUploadedAsset()
+        {
+            var readmePath = System.IO.Path.Combine(Application.dataPath, @"..\Assets\FlipWebApps\ProPooling\Readme - Pro Pooling.txt");
+            var exportedAssetPath = System.IO.Path.Combine(Application.dataPath, @"..\Temp\uploadtool_FlipWebApps_ProPooling.unitypackage");
+            const string archivePathTemplate = @"I:\OneDrive\Documents\Mark\Unity\Games\Pro Pooling\Releases\ProPooling v{0}({1}).unitypackage";
+
+            FwaLifeCycleShared.ArchiveAndVerifyAsset(readmePath, exportedAssetPath, archivePathTemplate);
+        }
+
+
         [MenuItem("FlipWebApps/Game Framework/Build Windows 64-bit")]
         static void Win64Build()
         {

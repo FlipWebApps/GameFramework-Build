@@ -1,7 +1,10 @@
-﻿using System.IO;
+﻿//
+// NOTE: Game Framework Full is the master copy
+//
 using UnityEditor;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
+using UnityEngine.Assertions;
 
 namespace Internal.Scripts.Editor
 {
@@ -71,5 +74,55 @@ namespace Internal.Scripts.Editor
 #endif
         }
         #endregion Build Functionality
+
+
+        /// <summary>
+        /// Archive an uploaded asset and perform some validation checks.
+        /// </summary>
+        /// <param name="readmePath"></param>
+        /// <param name="exportedAssetPath"></param>
+        /// <param name="archivePathTemplate"></param>
+        public static void ArchiveAndVerifyAsset(string readmePath, string exportedAssetPath, string archivePathTemplate)
+        {
+            string releaseVersion;
+            using (var streamReader = new System.IO.StreamReader(System.IO.Path.Combine(Application.dataPath, "Version.txt")))
+                releaseVersion = streamReader.ReadLine();
+            Assert.IsNotNull(releaseVersion, "Version.txt not read");
+
+            var archivePath = string.Format(archivePathTemplate, releaseVersion, Application.unityVersion);
+            if (System.IO.File.Exists(archivePath))
+                if (!EditorUtility.DisplayDialog("Replace existing backup?", "An existing backup already exists. Are you sure you want to replace?", "Yes", "No"))
+                    return;
+
+            System.IO.File.Copy(exportedAssetPath, archivePath, true);
+            Debug.Log("Uploaded asset archived to " + archivePath);
+
+
+            // Verify versions are updated in readme
+            string line;
+            bool firstLineRead = false;
+            bool changesFound = false;
+            using (var streamReader = new System.IO.StreamReader(readmePath))
+            {
+                while ((line = streamReader.ReadLine()) != null)
+                {
+                    if (firstLineRead)
+                    {
+                        // find line with changes
+                        if (line.StartsWith("v" + releaseVersion))
+                            changesFound = true;
+                    }
+                    else
+                    {
+                        // check header contains correct version
+                        if (!line.Contains("v" + releaseVersion))
+                            Debug.LogWarning(string.Format("The Readme first line contains '{0}'. It should have version '{1}'", line, releaseVersion));
+                        firstLineRead = true;
+                    }
+                }
+                if (!changesFound)
+                    Debug.LogWarning(string.Format("The Readme doesn't contain changes for version '{0}'!", releaseVersion));
+            }
+        }
     }
 }

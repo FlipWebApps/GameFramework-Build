@@ -2,18 +2,16 @@
 // NOTE: Game Framework Full is the master copy
 //
 using UnityEditor;
-using UnityEditor.Build.Reporting;
 using UnityEngine;
-using UnityEngine.Assertions;
+
+#if UNITY_2018_1_OR_NEWER
+using UnityEditor.Build.Reporting;
+#endif
 
 namespace Internal.Scripts.Editor
 {
-    public class FwaLifeCycleShared : MonoBehaviour {
-
-        // Use this for initialization
-        void Start () {
-	
-        }
+    public class FwaLifeCycleShared : MonoBehaviour
+    {
 
         [MenuItem("Assets/Copy Path")]
         static void CopyPath()

@@ -3,4 +3,6 @@
 // 
 
 UnityNightlyPipeline(UNITY_VERSION: "${params.UNITY_BUILD_VERSION}",
-                    projectName: "GameFramework")
+                    projectName: "GameFramework",
+                    ftpConfig: 'FlipWebApps',
+                    ftpDemoRemoteDirectory: '/demo/gameframework/')

@@ -3,6 +3,7 @@
 //
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Assertions;
 
 #if UNITY_2018_1_OR_NEWER
 using UnityEditor.Build.Reporting;

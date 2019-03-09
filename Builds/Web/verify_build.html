@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Demo Verification Page</title>
+</head>
+<body>
+
+<h1>Demo Verification Page</h1>
+<p>This is an internal page for quickly viewing development automatically build demos. Please view our <a href="/">website</a> for product information.</p>
+<ul>
+<li><a href="javascript:void(0)" onclick="ShowContent('');">release</a></li>
+<li><a href="javascript:void(0)" onclick="ShowContent('nightly/2017.1.5f1/');">nightly/2017.1.5f1</a></li>
+<li><a href="javascript:void(0)" onclick="ShowContent('nightly/2017.4.20f2/');">nightly/2017.4.20f2</a></li>
+<li><a href="javascript:void(0)" onclick="ShowContent('nightly/2018.1.9f2/');">nightly/2018.1.9f2</a></li>
+<li><a href="javascript:void(0)" onclick="ShowContent('nightly/2018.3.5f1/');">nightly/2018.3.5f1</a></li>
+<li><a href="javascript:void(0)" onclick="ShowContent('nightly/2019.1.0b3/');">nightly/2019.1.0b3</a></li>
+</ul>
+<div id="content"></div>
+<!--
+<iframe src="nightly/2017.4.20f2/AudioTransition" style="width: 1000px; height: 680px"></iframe>
+<iframe src="nightly/2017.4.20f2/CameraCrossTransition" style="width: 1000px; height: 680px"></iframe>
+<iframe src="nightly/2017.4.20f2/CameraCrossTransition" style="width: 1000px; height: 680px"></iframe>
+<iframe src="nightly/2017.4.20f2/CameraCrossTransition" style="width: 1000px; height: 680px"></iframe>
+<iframe src="nightly/2017.4.20f2/CameraCrossTransition" style="width: 1000px; height: 680px"></iframe>
+<iframe src="nightly/2017.4.20f2/CameraCrossTransition" style="width: 1000px; height: 680px"></iframe>
+<iframe src="nightly/2017.4.20f2/CameraCrossTransition" style="width: 1000px; height: 680px"></iframe>
+<iframe src="nightly/2017.4.20f2/CameraCrossTransition" style="width: 1000px; height: 680px"></iframe>
+<iframe src="nightly/2017.4.20f2/CameraCrossTransition" style="width: 1000px; height: 680px"></iframe>-->
+<script>
+function ShowContent(buildVersion) {
+    document.getElementById('content').innerHTML = "<h2> WebGL builds for " + buildVersion + "</h2>";
+    var links = ["demo"];
+    links.forEach(function(entry) {
+        document.getElementById('content').innerHTML += "<iframe src=\"" + buildVersion + entry + "\" style=\"width: 1000px; height: 680px\"></iframe>";
+    });
+}
+
+ShowContent("nightly/2017.4.20f2");
+</script>
+</body>
+</html>

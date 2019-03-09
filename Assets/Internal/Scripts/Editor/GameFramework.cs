@@ -33,7 +33,7 @@ namespace Internal.Scripts.Editor
         [MenuItem("FlipWebApps/Game Framework/Build Windows 64-bit")]
         static void Win64Build()
         {
-            FwaLifeCycleShared.EvaluateBuildReport(BuildPipeline.BuildPlayer(_testScenePaths, "Builds/Win64/GettingStarted.exe", BuildTarget.StandaloneWindows64, BuildOptions.None));
+            FwaLifeCycleShared.EvaluateBuildReport(BuildPipeline.BuildPlayer(_testScenePaths, "Builds/Win64/Output/Demo.exe", BuildTarget.StandaloneWindows64, BuildOptions.None));
         }
 
 
@@ -48,7 +48,7 @@ namespace Internal.Scripts.Editor
             PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.flipwebapps.gameframework");
 
             PlayerSettings.productName = "Getting Started";
-            FwaLifeCycleShared.EvaluateBuildReport(BuildPipeline.BuildPlayer(_testScenePaths, "Builds/AndroidBuild/GettingStarted.apk", BuildTarget.Android, BuildOptions.None));
+            FwaLifeCycleShared.EvaluateBuildReport(BuildPipeline.BuildPlayer(_testScenePaths, "Builds/Android/Output/Demo.apk", BuildTarget.Android, BuildOptions.None));
 
 
             PlayerSettings.companyName = oldCompanyName;
@@ -63,7 +63,7 @@ namespace Internal.Scripts.Editor
             var oldProductName = PlayerSettings.productName;
 
             PlayerSettings.productName = "Game Framework - Getting Started";
-            FwaLifeCycleShared.EvaluateBuildReport(BuildPipeline.BuildPlayer(_testScenePaths, "Builds/Web/", BuildTarget.WebGL, BuildOptions.None));
+            FwaLifeCycleShared.EvaluateBuildReport(BuildPipeline.BuildPlayer(_testScenePaths, "Builds/Web/Output/demo", BuildTarget.WebGL, BuildOptions.None));
 
             PlayerSettings.productName = oldProductName;
         }

@@ -1,5 +1,4 @@
-﻿using System.IO;
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 
 #if UNITY_2018_1_OR_NEWER
@@ -22,9 +21,9 @@ namespace Internal.Scripts.Editor
         [MenuItem("FlipWebApps/Game Framework/Archive Uploaded Asset")]
         static void ArchiveUploadedAsset()
         {
-            var readmePath = System.IO.Path.Combine(Application.dataPath, @"..\Assets\FlipWebApps\ProPooling\Readme - Pro Pooling.txt");
-            var exportedAssetPath = System.IO.Path.Combine(Application.dataPath, @"..\Temp\uploadtool_FlipWebApps_ProPooling.unitypackage");
-            const string archivePathTemplate = @"I:\OneDrive\Documents\Mark\Unity\Games\Pro Pooling\Releases\ProPooling v{0}({1}).unitypackage";
+            var readmePath = System.IO.Path.Combine(Application.dataPath, @"..\Assets\FlipWebApps\GameFramework\Readme.txt");
+            var exportedAssetPath = System.IO.Path.Combine(Application.dataPath, @"..\Temp\uploadtool_FlipWebApps_GameFramework.unitypackage");
+            const string archivePathTemplate = @"I:\OneDrive\Documents\Mark\Unity\Games\Game Framework\Releases\Free\GameFramework - Free v{0}({1}).unitypackage";
 
             FwaLifeCycleShared.ArchiveAndVerifyAsset(readmePath, exportedAssetPath, archivePathTemplate);
         }

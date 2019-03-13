@@ -5,5 +5,7 @@
 UnityReleasePipeline(unityExportVersion: "${params.UNITY_EXPORT_VERSION}",
 					unityBuildVersions: "${params.UNITY_BUILD_VERSIONS}", 
                     projectName: "Game Framework",
+					env.archiveExtra1: "Free\\"
+					env.archiveExtra2: " - Free",
                     ftpConfig: 'FlipWebApps',
                     ftpHelpRemoteDirectory: '/documentation/api/game-framework/')

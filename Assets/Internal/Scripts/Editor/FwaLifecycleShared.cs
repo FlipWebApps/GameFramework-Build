@@ -11,15 +11,16 @@ using UnityEditor.Build.Reporting;
 
 namespace Internal.Scripts.Editor
 {
-    public class FwaLifeCycleShared : MonoBehaviour
-    {
+    public class FwaLifeCycleShared : MonoBehaviour {
 
+#if !UNITY_2018_3_OR_NEWER    
         [MenuItem("Assets/Copy Path")]
         static void CopyPath()
         {
             var selected = Selection.activeObject;
             EditorGUIUtility.systemCopyBuffer = AssetDatabase.GetAssetPath(selected);
         }
+#endif
 
         [MenuItem("FlipWebApps/Clean All Scenes and Defines")]
         static void CleanScenesAndDefines()

@@ -64,6 +64,8 @@ namespace Internal.Scripts.Editor
         [MenuItem("FlipWebApps/Game Framework/Build WebGL")]
         static void WebGLBuild()
         {
+            var outputFolder = FwaLifeCycleShared.GetCommandLineArgumentValue("BuildOutputDirectory") ?? "Builds/WebGL";
+
             var oldProductName = PlayerSettings.productName;
 
             PlayerSettings.productName = "Game Framework - Getting Started";

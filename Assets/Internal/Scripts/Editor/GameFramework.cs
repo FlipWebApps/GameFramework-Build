@@ -1,5 +1,6 @@
 ﻿using UnityEditor;
 using UnityEngine;
+using System.IO;
 
 #if UNITY_2018_1_OR_NEWER
 using UnityEditor.Build.Reporting;
@@ -21,7 +22,7 @@ namespace Internal.Scripts.Editor
         [MenuItem("FlipWebApps/Game Framework/Archive Uploaded Asset")]
         static void ArchiveUploadedAsset()
         {
-            var readmePath = System.IO.Path.Combine(Application.dataPath, @"..\Assets\FlipWebApps\GameFramework\Readme.txt");
+            var readmePath = System.IO.Path.Combine(Application.dataPath, @"..\Assets\FlipWebApps\GameFramework\Release Notes.txt");
             var exportedAssetPath = System.IO.Path.Combine(Application.dataPath, @"..\Temp\uploadtool_FlipWebApps_GameFramework.unitypackage");
             const string archivePathTemplate = @"I:\OneDrive\Documents\Mark\Unity\Games\Game Framework\Releases\Free\GameFramework - Free v{0}({1}).unitypackage";
 
@@ -32,13 +33,17 @@ namespace Internal.Scripts.Editor
         [MenuItem("FlipWebApps/Game Framework/Build Windows 64-bit")]
         static void Win64Build()
         {
-            FwaLifeCycleShared.EvaluateBuildReport(BuildPipeline.BuildPlayer(_testScenePaths, "Builds/Win64/Output/Demo.exe", BuildTarget.StandaloneWindows64, BuildOptions.None));
+            var outputFolder = FwaLifeCycleShared.GetCommandLineArgumentValue("BuildOutputDirectory") ?? "Builds/Win64";
+
+            FwaLifeCycleShared.EvaluateBuildReport(BuildPipeline.BuildPlayer(_testScenePaths, Path.Combine(outputFolder, "Demo.exe"), BuildTarget.StandaloneWindows64, BuildOptions.None));
         }
 
 
         [MenuItem("FlipWebApps/Game Framework/Build Android")]
         static void AndroidBuild()
         {
+            var outputFolder = FwaLifeCycleShared.GetCommandLineArgumentValue("BuildOutputDirectory") ?? "Builds/Android";
+
             var oldCompanyName = PlayerSettings.companyName;
             var oldProductName = PlayerSettings.productName;
             var oldIdentifier = PlayerSettings.GetApplicationIdentifier(BuildTargetGroup.Android);
@@ -47,7 +52,7 @@ namespace Internal.Scripts.Editor
             PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.flipwebapps.gameframework");
 
             PlayerSettings.productName = "Getting Started";
-            FwaLifeCycleShared.EvaluateBuildReport(BuildPipeline.BuildPlayer(_testScenePaths, "Builds/Android/Output/Demo.apk", BuildTarget.Android, BuildOptions.None));
+            FwaLifeCycleShared.EvaluateBuildReport(BuildPipeline.BuildPlayer(_testScenePaths, Path.Combine(outputFolder, "Demo.apk"), BuildTarget.Android, BuildOptions.None));
 
 
             PlayerSettings.companyName = oldCompanyName;
@@ -62,7 +67,7 @@ namespace Internal.Scripts.Editor
             var oldProductName = PlayerSettings.productName;
 
             PlayerSettings.productName = "Game Framework - Getting Started";
-            FwaLifeCycleShared.EvaluateBuildReport(BuildPipeline.BuildPlayer(_testScenePaths, "Builds/Web/Output/demo", BuildTarget.WebGL, BuildOptions.None));
+            FwaLifeCycleShared.EvaluateBuildReport(BuildPipeline.BuildPlayer(_testScenePaths, Path.Combine(outputFolder, "demo"), BuildTarget.WebGL, BuildOptions.None));
 
             PlayerSettings.productName = oldProductName;
         }

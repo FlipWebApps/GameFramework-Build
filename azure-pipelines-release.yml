@@ -1,0 +1,173 @@
+# Note that we typically work outside the ArtifactStagingDirectory in a persistant folder so that we can easily 
+# manually open solutions later for verification. This works as we only have a single build server.
+#
+# Parameters you need to specify:
+#  UNITY_VERSION Version of Unity to use e.g. 2018.4.15f1
+#  RELEASE - Release number.
+#  DEPLOY - Whether to deploy.
+
+#parameters:
+#- name: image
+  #displayName: Pool Image
+  #type: string
+  #default: ubuntu-latest
+  #values:
+  #- windows-latest
+  #- vs2017-win2016
+  #- ubuntu-latest
+  #- ubuntu-16.04
+  #- macOS-latest
+  #- macOS-10.14
+
+variables:
+  PERSISTANT_ROOT: I:\AzureDevOpsPersistant\GameFramework\
+  PERSISTANT_FOLDER: $(PERSISTANT_ROOT)\$(UNITY_VERSION)
+  PERSISTANT_DOXYGEN: $(PERSISTANT_ROOT)\DoxygenOutput
+  RELEASE_FOLDER: I:\AzureDevOpsPersistant\GameFramework-Release\$(UNITY_VERSION)
+  FTP_HELP_REMOTE_DIRECTORY: /public_html/documentation/api/game-framework
+  FTP_DEMO_REMOTE_DIRECTORY: /public_html/demo/gameframework
+
+  trigger: none 
+
+pool:
+  name: Default
+  
+stages:
+- stage: Prepare
+  jobs:
+  - job: Info
+    steps:
+
+    - checkout: none
+
+    # Some generic info about this job
+    - task: CmdLine@2
+      displayName: 'Job Info'
+      inputs:
+        script: |
+          echo "Build.ArtifactStagingDirectory:" $(Build.ArtifactStagingDirectory)
+          echo "Build.Repository.LocalPath:" $(Build.Repository.LocalPath)
+          echo "Build.Repository.LocalPath:" $(UNITY_VERSION_EDITOR)
+          echo "Build.Repository.LocalPath:" $(UNITY_VERSION)
+          echo "PERSISTANT_PROJECT_FOLDER:" $(PERSISTANT_PROJECT_FOLDER)
+          echo "PERSISTANT_FOLDER:" $(PERSISTANT_FOLDER)
+
+        
+- stage: Build
+  jobs:
+  - job: Build
+    strategy:
+      matrix:
+        Win64:
+          BUILD_TARGET: 'Win64'
+        Web:
+          BUILD_TARGET: 'WebGL'
+        Android:
+          BUILD_TARGET: 'Android'
+      maxParallel: 1
+    variables:
+      PERSISTANT_PROJECT_FOLDER: $(RELEASE_FOLDER)\$(BUILD_TARGET)
+      PERSISTANT_OUTPUT_FOLDER: $(RELEASE_FOLDER)\$(BUILD_TARGET)-Output
+
+    steps:
+
+    # As we use the same build server and run in sequence we only checkout once.
+    - checkout: none
+
+    # Create Persistant Project
+    - task: PowerShell@2
+      displayName: 'Create Persistant Project'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Remove-Item -Recurse -Force $(PERSISTANT_PROJECT_FOLDER) -ErrorAction Ignore
+          md -Force $(PERSISTANT_PROJECT_FOLDER)
+
+          # Create blank project to work with
+          & "C:\Program Files\Unity\Hub\Editor\$(UNITY_VERSION)\Editor\Unity.exe" -batchmode -createProject "$(PERSISTANT_PROJECT_FOLDER)" -logFile - -quit -buildTarget $(BUILD_TARGET) -importPackage "I:\OneDrive\Documents\Mark\Unity\Games\Game Framework\Releases\Free\GameFramework - Free v$(RELEASE)($(UNITY_VERSION)).unitypackage" | tee $(PERSISTANT_PROJECT_FOLDER)\log.txt
+
+          # Copy assets and helper functionality
+          # Copy-Item -Path Assets -Destination $(PERSISTANT_PROJECT_FOLDER)\ -recurse -Force
+
+    # Run Editor Tests
+    - task: PowerShell@2
+      displayName: 'Run Editor Tests'
+      inputs:
+        targetType: 'inline'
+        script: |
+          & "C:\Program Files\Unity\Hub\Editor\$(UNITY_VERSION)\Editor\Unity.exe" -batchmode -projectPath "$(PERSISTANT_PROJECT_FOLDER)" -logFile - -runEditorTests -buildTarget $(BUILD_TARGET) -editorTestsResultFile "$(Build.ArtifactStagingDirectory)\UnityTestResults-Editor-$(BUILD_TARGET).xml" | tee $(PERSISTANT_PROJECT_FOLDER)\test-log.txt
+
+          # Check for warnings in output
+          $warnings = select-string -Path $(PERSISTANT_PROJECT_FOLDER)\test-log.txt -Pattern ".*FlipWebApps.*: warning CS.*" -AllMatches | % { $_.Matches } | % { $_.Value }
+          if ($warnings) {
+            $warnings
+            Write-Host “##vso[task.logissue type=warning;] FOUND COMPILER WARNINGS - STOPPING BUILD”
+            Write-Host “##vso[task.logissue type=warning;] $warnings”
+          }
+
+    # Publish test results
+    - task: PublishTestResults@2
+      inputs:
+        testResultsFormat: 'NUnit'
+        testResultsFiles: '$(Build.ArtifactStagingDirectory)\UnityTestResults*.xml'
+        failTaskOnFailedTests: true
+
+    # # Build - Windows
+    # - task: PowerShell@2
+    #   inputs:
+    #     targetType: 'inline'
+    #     script: |
+    #       & "C:\Program Files\Unity\Hub\Editor\$(UNITY_VERSION)\Editor\Unity.exe" -batchmode -projectPath "$(PERSISTANT_PROJECT_FOLDER)" -logFile - -quit -buildTarget $(BUILD_TARGET) -executeMethod Internal.Scripts.Editor.BeautifulTransitions.$(BUILD_TARGET)Build --BuildOutputDirectory $(PERSISTANT_OUTPUT_FOLDER) | tee $(PERSISTANT_PROJECT_FOLDER)\log.txt
+
+    #       $warnings = select-string -Path $(PERSISTANT_PROJECT_FOLDER)\log.txt -Pattern ".*FlipWebApps.*: warning CS.*" -AllMatches | % { $_.Matches } | % { $_.Value }
+    #       if ($warnings) {
+    #         $warnings
+    #         Write-Host “##vso[task.logissue type=warning;] FOUND COMPILER WARNINGS - STOPPING BUILD”
+    #         Write-Host “##vso[task.logissue type=warning;] $warnings”
+    #       }
+          
+
+- stage: Deployment
+  condition: and(succeeded(), eq(variables['DEPLOY'], true))
+  jobs:
+  - deployment: Deploy
+    displayName: Deploy
+    # creates an environment if it doesn't exist
+    environment: 'beautiful-transitions-production'
+    strategy:
+
+      # default deployment strategy
+      runOnce:
+        deploy:
+          steps:
+
+          # As we use the same build server and run in sequence we only checkout once.
+          - checkout: none
+
+          # Upload documentation - currently not in persistant folder!
+          - task: FtpUpload@2
+            displayName: 'Upload API Documentation'          
+            inputs:
+              credentialsOption: 'serviceEndpoint'
+              serverEndpoint: 'ftp.flipwebapps.com'
+              rootDirectory: $(PERSISTANT_DOXYGEN)
+              filePatterns: '**'
+              remoteDirectory: $(FTP_HELP_REMOTE_DIRECTORY)
+              clean: true
+              preservePaths: true
+              trustSSL: false
+
+          # Upload demos
+          - task: FtpUpload@2
+            displayName: 'Upload Demos'          
+            inputs:
+              credentialsOption: 'serviceEndpoint'
+              serverEndpoint: 'ftp.flipwebapps.com'
+              rootDirectory: $(PERSISTANT_FOLDER)\WebGL-Output
+              filePatterns: '**'
+              remoteDirectory: $(FTP_DEMO_REMOTE_DIRECTORY)
+              clean: false
+              cleanContents: false
+              preservePaths: true
+              trustSSL: false
+        

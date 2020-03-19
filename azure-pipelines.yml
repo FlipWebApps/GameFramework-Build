@@ -1,0 +1,226 @@
+# Note that we typically work outside the ArtifactStagingDirectory in a persistant folder so that we can easily 
+# manually open solutions later for verification. This works as we only have a single build server.
+#
+# Variables you need to specify:
+#  UNITY_VERSION Version of Unity to use e.g. 2018.4.15f1
+#  STAGE_DOCUMENTATION - Whether to upload documentation to staging (only needs uploading from one build)
+#  SKIP_ANDROID_BUILD - Skip building for Android then true.
+
+variables:
+  PERSISTANT_ROOT: I:\AzureDevOpsPersistant\GameFramework\
+  PERSISTANT_FOLDER: $(PERSISTANT_ROOT)\$(UNITY_VERSION)
+  PERSISTANT_DOXYGEN: $(PERSISTANT_ROOT)\DoxygenOutput
+  FTP_HELP_REMOTE_DIRECTORY: /public_html/documentation/api/game-framework
+  FTP_DEMO_REMOTE_DIRECTORY: /public_html/demo/gameframework
+
+trigger:
+  - master
+
+pool:
+  name: Default
+
+stages:
+
+- stage: Prepare
+  jobs:
+  - job: CreateProject
+    strategy:
+      matrix:
+        Win64:
+          BUILD_TARGET: 'Win64'
+        Web:
+          BUILD_TARGET: 'WebGL'
+        Android:
+          BUILD_TARGET: 'Android'
+        iOS:
+          BUILD_TARGET: 'iOS'
+      maxParallel: 1
+    variables:
+      PERSISTANT_PROJECT_FOLDER: $(PERSISTANT_FOLDER)\$(BUILD_TARGET)
+    steps:
+
+    # Checkout repository
+    - checkout: self
+      submodules: true
+
+    # Some generic info about this job
+    - task: CmdLine@2
+      displayName: 'Job Info'
+      inputs:
+        script: |
+          echo "Build.ArtifactStagingDirectory:" $(Build.ArtifactStagingDirectory)
+          echo "Build.Repository.LocalPath:" $(Build.Repository.LocalPath)
+          echo "Build.Repository.LocalPath:" $(UNITY_VERSION_EDITOR)
+          echo "Build.Repository.LocalPath:" $(UNITY_VERSION)
+          echo "PERSISTANT_PROJECT_FOLDER:" $(PERSISTANT_PROJECT_FOLDER)
+          echo "PERSISTANT_FOLDER:" $(PERSISTANT_FOLDER)
+
+    # Create Persistant Project
+    - task: PowerShell@2
+      displayName: 'Create Persistant Project'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Remove-Item -Recurse -Force $(PERSISTANT_PROJECT_FOLDER) -ErrorAction Ignore
+          md -Force $(PERSISTANT_PROJECT_FOLDER)
+
+          # Create blank project to work with
+          & "C:\Program Files\Unity\Hub\Editor\$(UNITY_VERSION)\Editor\Unity.exe" -batchmode -createProject "$(PERSISTANT_PROJECT_FOLDER)" -logFile - -quit -buildTarget $(BUILD_TARGET) | tee $(PERSISTANT_PROJECT_FOLDER)\log.txt
+
+          # Copy assets and helper functionality
+          Copy-Item -Path Assets -Destination $(PERSISTANT_PROJECT_FOLDER)\ -recurse -Force
+      
+- stage: Test
+  jobs:
+  - job: Test
+    strategy:
+      matrix:
+        Win64:
+          BUILD_TARGET: 'Win64'
+        Web:
+          BUILD_TARGET: 'WebGL'
+        Android:
+          BUILD_TARGET: 'Android'
+        iOS:
+          BUILD_TARGET: 'iOS'
+      maxParallel: 1
+    variables:
+      PERSISTANT_PROJECT_FOLDER: $(PERSISTANT_FOLDER)\$(BUILD_TARGET)
+
+    steps:
+
+    # As we use the same build server and run in sequence we only checkout once.
+    - checkout: none
+
+    # Run Editor Tests
+    - task: PowerShell@2
+      displayName: 'Run Editor Tests'
+      inputs:
+        targetType: 'inline'
+        script: |
+          & "C:\Program Files\Unity\Hub\Editor\$(UNITY_VERSION)\Editor\Unity.exe" -batchmode -projectPath "$(PERSISTANT_PROJECT_FOLDER)" -logFile - -runEditorTests -buildTarget $(BUILD_TARGET) -editorTestsResultFile "$(Build.ArtifactStagingDirectory)\UnityTestResults-Editor-$(BUILD_TARGET).xml" | tee $(PERSISTANT_PROJECT_FOLDER)\test-log.txt
+
+    # Publish test results
+    - task: PublishTestResults@2
+      inputs:
+        testResultsFormat: 'NUnit'
+        testResultsFiles: '$(Build.ArtifactStagingDirectory)\UnityTestResults*.xml'
+        failTaskOnFailedTests: true
+    
+- stage: Build
+  jobs:
+  - job: Build
+    strategy:
+      matrix:
+        Win64:
+          BUILD_TARGET: 'Win64'
+        Web:
+          BUILD_TARGET: 'WebGL'
+        Android:
+          BUILD_TARGET: 'Android'
+      maxParallel: 1
+    variables:
+      PERSISTANT_PROJECT_FOLDER: $(PERSISTANT_FOLDER)\$(BUILD_TARGET)
+      PERSISTANT_OUTPUT_FOLDER: $(PERSISTANT_FOLDER)\$(BUILD_TARGET)-Output
+
+    steps:
+
+    # As we use the same build server and run in sequence we only checkout once.
+    - checkout: none
+
+    # Build - Windows
+    - task: PowerShell@2
+      condition: and(succeeded(), or(ne(variables['BUILD_TARGET'], 'Android'), ne(variables['SKIP_ANDROID_BUILD'], true))) # skip in some versions (2018) due to issues setting up environment
+      inputs:
+        targetType: 'inline'
+        script: |
+          & "C:\Program Files\Unity\Hub\Editor\$(UNITY_VERSION)\Editor\Unity.exe" -batchmode -projectPath "$(PERSISTANT_PROJECT_FOLDER)" -logFile - -quit -buildTarget $(BUILD_TARGET) -executeMethod Internal.Scripts.Editor.GameFramework.$(BUILD_TARGET)Build --BuildOutputDirectory $(PERSISTANT_OUTPUT_FOLDER) | tee $(PERSISTANT_PROJECT_FOLDER)\log.txt
+
+          $warnings = select-string -Path $(PERSISTANT_PROJECT_FOLDER)\log.txt -Pattern ".*FlipWebApps.*: warning CS.*" -AllMatches | % { $_.Matches } | % { $_.Value }
+          if ($warnings) {
+            $warnings
+            Write-Host “##vso[task.logissue type=warning;] FOUND COMPILER WARNINGS - STOPPING BUILD”
+            Write-Host “##vso[task.logissue type=warning;] $warnings”
+          }
+
+- stage: Documentation
+  jobs:
+  - job: Doxygen
+    steps:
+
+    # As we use the same build server and run in sequence we only checkout once.
+    - checkout: none
+
+    # Run doxygen
+    - script: doxygen
+      displayName: 'Doxygen'
+      workingDirectory: doxygen
+
+    # Copy to persistant project
+    - task: PowerShell@2
+      displayName: 'Copy to Persistant Project'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Remove-Item -Recurse -Force $(PERSISTANT_DOXYGEN) -ErrorAction Ignore
+          md -Force $(PERSISTANT_DOXYGEN)
+
+          # Copy assets and helper functionality
+          Copy-Item -Path doxygen\html\* -Destination $(PERSISTANT_DOXYGEN) -recurse -Force
+
+- stage: StageDemos
+  jobs:
+  - job: Deployment
+    steps:
+
+    # As we use the same build server and run in sequence we only checkout once.
+    - checkout: none
+
+    # Upload main template
+    - task: FtpUpload@2
+      displayName: 'Upload Demos Overview'          
+      inputs:
+        credentialsOption: 'serviceEndpoint'
+        serverEndpoint: 'ftp.flipwebapps.com'
+        rootDirectory: Builds\Web
+        filePatterns: '**.html'
+        remoteDirectory: $(FTP_DEMO_REMOTE_DIRECTORY)
+        clean: false
+        cleanContents: false
+        preservePaths: true
+        trustSSL: false
+
+    # Upload version
+    - task: FtpUpload@2
+      displayName: 'Upload Demos'          
+      inputs:
+        credentialsOption: 'serviceEndpoint'
+        serverEndpoint: 'ftp.flipwebapps.com'
+        rootDirectory: $(PERSISTANT_FOLDER)\WebGL-Output
+        filePatterns: '**'
+        remoteDirectory: $(FTP_DEMO_REMOTE_DIRECTORY)/nightly/$(UNITY_VERSION)
+        clean: false
+        cleanContents: false
+        preservePaths: true
+        trustSSL: false
+
+- stage: StageDocumentation
+  condition: and(succeeded(), eq(variables['STAGE_DOCUMENTATION'], true))
+  jobs:
+  - job: Doxygen
+    steps:
+
+    # As we use the same build server and run in sequence we only checkout once.
+    - checkout: none
+
+    # Upload to staging FTP 
+    - task: FtpUpload@2
+      inputs:
+        credentialsOption: 'serviceEndpoint'
+        serverEndpoint: 'ftp.flipwebapps.com'
+        rootDirectory: $(PERSISTANT_DOXYGEN)
+        filePatterns: '**'
+        remoteDirectory: $(FTP_HELP_REMOTE_DIRECTORY)-staging
+        clean: true
+        preservePaths: true
+        trustSSL: false

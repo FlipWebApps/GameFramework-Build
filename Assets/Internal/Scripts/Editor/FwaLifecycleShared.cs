@@ -35,6 +35,23 @@ namespace Internal.Scripts.Editor
             Debug.Log("All scenes and defines cleared.");
         }
 
+        ///
+        /// Get the value for the specified command line argument or null if not found
+        ///
+        public static string GetCommandLineArgumentValue(string argumentName) {
+            string[] allArguments = System.Environment.GetCommandLineArgs();
+
+            if (!argumentName.StartsWith("--"))
+                argumentName = "--" + argumentName;
+
+            for (int i = 0; i < allArguments.Length-1; i++) {
+                if (allArguments[i] == argumentName)
+                    return allArguments[i + 1];
+            }
+
+            return null;
+        }
+
         #region Build Functionality
         /// <summary>
         /// Evaluate Build Report and if batch mode exit on error - Unity 2017 version where BuildPlayer returns a string
